@@ -1,14 +1,18 @@
 import pytest
+
 from django.urls import reverse
 from django.test import Client
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from datetime import datetime, timedelta
+
 from news.models import News, Comment
 
 
 User = get_user_model()
+
+PK = 1
 
 NEWS_COUNT_ON_HOME_PAGE = 10
 
@@ -22,10 +26,8 @@ NEWS_EDIT_URL = ('news:edit')
 NEWS_HOME_URL = ('news:home')
 NEWS_DETAIL_URL = ('news:detail')
 
-CLIENT = Client()
 ADMIN = pytest.lazy_fixture('admin_client')
 AUTHOR = pytest.lazy_fixture('auth_client')
-COMMENT_FOR_ARGS = pytest.lazy_fixture('comment_for_args')
 
 COMMENT_TEXT = 'Текст комментария'
 NEW_COMMENT_TEXT = 'Обновлённый комментарий'
@@ -91,43 +93,12 @@ def news_list():
 @pytest.fixture
 def comments_list(news, author):
     now = timezone.now()
-    for index in range(10):
-        comment = Comment.objects.create(
-            news=news, author=author, text=f'Tекст {index}',
-        )
-        comment.created = now + timedelta(days=index)
-        return comment
-
-
-@pytest.fixture
-def form_data():
-    return {
-        'text': COMMENT_TEXT,
-    }
-
-
-@pytest.fixture
-def new_data():
-    return {
-        'text': NEW_COMMENT_TEXT,
-    }
-
-
-@pytest.fixture
-def comment_for_args(comment):
-    return (comment.id,)
-
-
-@pytest.fixture
-def news_for_args(news):
-    return (news.id,)
-
-
-@pytest.fixture
-def news_detail(news):
-    return reverse(NEWS_DETAIL_URL, args=(news.id,))
-
-
-@pytest.fixture
-def news_home():
-    return NEWS_HOME
+    comment = [
+        Comment(news=news,
+                author=author,
+                text=f'Текст {index}',
+                created=now + timedelta(days=index))
+        for index in range(10)
+    ]
+    Comment.objects.bulk_create(comment)
+    return comment
