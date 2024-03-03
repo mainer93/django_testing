@@ -1,5 +1,4 @@
 import pytest
-
 from django.urls import reverse
 from django.test import Client
 from django.contrib.auth import get_user_model
@@ -12,7 +11,10 @@ from news.models import News, Comment
 
 User = get_user_model()
 
-PK = 1
+
+INDEX_RANGE = 10
+AUTHOR_USERNAME = 'Автор'
+READER_USERNAME = 'Читатель'
 
 NEWS_COUNT_ON_HOME_PAGE = 10
 
@@ -28,6 +30,8 @@ NEWS_DETAIL_URL = ('news:detail')
 
 ADMIN = pytest.lazy_fixture('admin_client')
 AUTHOR = pytest.lazy_fixture('auth_client')
+DELETE_URL = pytest.lazy_fixture('news_delete_url')
+EDIT_URL = pytest.lazy_fixture('news_edit_url')
 
 COMMENT_TEXT = 'Текст комментария'
 NEW_COMMENT_TEXT = 'Обновлённый комментарий'
@@ -37,12 +41,12 @@ NEWS_TEXT = 'Текст'
 
 @pytest.fixture
 def author(django_user_model):
-    return django_user_model.objects.create(username='Автор комментария')
+    return django_user_model.objects.create(username=AUTHOR_USERNAME)
 
 
 @pytest.fixture
 def reader(django_user_model):
-    return django_user_model.objects.create(username='Читатель')
+    return django_user_model.objects.create(username=READER_USERNAME)
 
 
 @pytest.fixture
@@ -98,7 +102,17 @@ def comments_list(news, author):
                 author=author,
                 text=f'Текст {index}',
                 created=now + timedelta(days=index))
-        for index in range(10)
+        for index in range(INDEX_RANGE)
     ]
     Comment.objects.bulk_create(comment)
     return comment
+
+
+@pytest.fixture
+def news_edit_url(comment):
+    return reverse(NEWS_EDIT_URL, args=(comment.id,))
+
+
+@pytest.fixture
+def news_delete_url(comment):
+    return reverse(NEWS_DELETE_URL, args=(comment.id,))

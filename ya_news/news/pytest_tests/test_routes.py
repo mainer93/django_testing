@@ -1,10 +1,9 @@
 from http import HTTPStatus
 
 import pytest
-from pytest_django.asserts import assertRedirects
-
 from django.test import Client
 from django.urls import reverse
+from pytest_django.asserts import assertRedirects
 
 from news.pytest_tests import conftest
 
@@ -15,14 +14,10 @@ def get_test_parameters():
         (conftest.SIGNUP_URL, Client(), HTTPStatus.OK),
         (conftest.LOGIN_URL, Client(), HTTPStatus.OK),
         (conftest.LOGOUT_URL, Client(), HTTPStatus.OK),
-        (reverse(conftest.NEWS_DELETE_URL, args=(conftest.PK,)),
-         conftest.AUTHOR, HTTPStatus.OK),
-        (reverse(conftest.NEWS_DELETE_URL, args=(conftest.PK,)),
-         conftest.ADMIN, HTTPStatus.NOT_FOUND),
-        (reverse(conftest.NEWS_EDIT_URL, args=(conftest.PK,)),
-         conftest.AUTHOR, HTTPStatus.OK),
-        (reverse(conftest.NEWS_EDIT_URL, args=(conftest.PK,)),
-         conftest.ADMIN, HTTPStatus.NOT_FOUND),
+        (conftest.DELETE_URL, conftest.AUTHOR, HTTPStatus.OK),
+        (conftest.DELETE_URL, conftest.ADMIN, HTTPStatus.NOT_FOUND),
+        (conftest.EDIT_URL, conftest.AUTHOR, HTTPStatus.OK),
+        (conftest.EDIT_URL, conftest.ADMIN, HTTPStatus.NOT_FOUND),
     ]
 
 
@@ -31,22 +26,21 @@ def get_test_parameters():
     get_test_parameters(),
 )
 @pytest.mark.django_db
-def test_pages_availability_for_different_users(url, client,
-                                                expected_status, comment):
+def test_pages_availability_for_different_users(url, client, expected_status):
     response = client.get(url)
     assert response.status_code == expected_status
 
 
 @pytest.mark.parametrize(
-    'name, args',
+    'name',
     (
-        (conftest.NEWS_EDIT_URL, (conftest.PK,)),
-        (conftest.NEWS_DELETE_URL, (conftest.PK,)),
+        conftest.NEWS_EDIT_URL,
+        conftest.NEWS_DELETE_URL,
     )
 )
-def test_edit_delete_comment_redirect_for_anonymous(client, name, args):
+def test_edit_delete_comment_redirect_for_anonymous(client, name, comment):
     login_url = conftest.LOGIN_URL
-    url = reverse(name, args=args)
+    url = reverse(name, args=(comment.id,))
     expected_url = f'{login_url}?next={url}'
     response = client.get(url)
     assertRedirects(response, expected_url)

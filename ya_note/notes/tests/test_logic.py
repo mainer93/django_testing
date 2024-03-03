@@ -3,12 +3,11 @@ from http import HTTPStatus
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
+from pytils.translit import slugify
 
 from notes.models import Note
 from notes.forms import WARNING
 from notes.tests import test_constants
-
-from pytils.translit import slugify
 
 
 User = get_user_model()
@@ -18,10 +17,14 @@ class TestLogicApp(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.author = User.objects.create(username='Автор')
+        cls.author = User.objects.create(
+            username=test_constants.AUTHOR_USERNAME
+        )
         cls.auth_client = Client()
         cls.auth_client.force_login(cls.author)
-        cls.reader = User.objects.create(username='Читатель')
+        cls.reader = User.objects.create(
+            username=test_constants.READER_USERNAME
+        )
         cls.reader_client = Client()
         cls.reader_client.force_login(cls.reader)
         cls.note = Note.objects.create(
@@ -42,7 +45,7 @@ class TestLogicApp(TestCase):
         response = self.auth_client.post(url, data=self.form_data)
         self.assertRedirects(response, reverse('notes:success'))
         self.assertEqual(Note.objects.count(), note_count + 1)
-        new_note = Note.objects.last()
+        new_note = Note.objects.get(slug=self.form_data['slug'])
         self.assertEqual(new_note.title, self.form_data['title'])
         self.assertEqual(new_note.text, self.form_data['text'])
         self.assertEqual(new_note.slug, self.form_data['slug'])
@@ -64,8 +67,8 @@ class TestLogicApp(TestCase):
         response = self.auth_client.post(url, data=self.form_data)
         self.assertRedirects(response, test_constants.NOTES_SUCCESS_URL)
         self.assertEqual(Note.objects.count(), note_count + 1)
-        new_note = Note.objects.last()
         expected_slug = slugify(self.form_data['title'])
+        new_note = Note.objects.get(slug=expected_slug)
         self.assertEqual(new_note.slug, expected_slug)
 
     def test_not_unique_slug(self):
@@ -81,26 +84,22 @@ class TestLogicApp(TestCase):
         url = reverse('notes:edit', args=(self.note.slug,))
         response = self.auth_client.post(url, self.form_data)
         self.assertRedirects(response, test_constants.NOTES_SUCCESS_URL)
-        self.note.refresh_from_db()
-        self.assertEqual(self.note.title, self.form_data['title'])
-        self.assertEqual(self.note.text, self.form_data['text'])
-        self.assertEqual(self.note.slug, self.form_data['slug'])
-        self.assertEqual(self.note.author, self.author)
+        new_note = Note.objects.get(slug=self.form_data['slug'])
+        self.assertEqual(new_note.title, self.form_data['title'])
+        self.assertEqual(new_note.text, self.form_data['text'])
+        self.assertEqual(new_note.slug, self.form_data['slug'])
+        self.assertEqual(self.note.author, new_note.author)
 
     def test_other_user_cant_edit_note(self):
-        user_statuses = [
-            (self.reader_client, HTTPStatus.NOT_FOUND),
-        ]
-        for user, status in user_statuses:
-            with self.subTest(user=user):
-                url = reverse('notes:edit', args=(self.note.slug,))
-                response = user.post(url, self.form_data)
-                self.assertEqual(response.status_code, status)
-                note_from_db = Note.objects.get(id=self.note.id)
-                self.assertEqual(self.note.title, note_from_db.title)
-                self.assertEqual(self.note.text, note_from_db.text)
-                self.assertEqual(self.note.slug, note_from_db.slug)
-                self.assertEqual(self.note.author, self.author)
+        user, status = self.reader_client, HTTPStatus.NOT_FOUND
+        url = reverse('notes:edit', args=(self.note.slug,))
+        response = user.post(url, self.form_data)
+        self.assertEqual(response.status_code, status)
+        note_from_db = Note.objects.get(id=self.note.id)
+        self.assertEqual(self.note.title, note_from_db.title)
+        self.assertEqual(self.note.text, note_from_db.text)
+        self.assertEqual(self.note.slug, note_from_db.slug)
+        self.assertEqual(self.note.author, note_from_db.author)
 
     def test_author_can_delete_note(self):
         url = reverse('notes:delete', args=(self.note.slug,))
@@ -108,6 +107,7 @@ class TestLogicApp(TestCase):
         response = self.auth_client.post(url)
         self.assertRedirects(response, test_constants.NOTES_SUCCESS_URL)
         self.assertEqual(Note.objects.count(), note_count - 1)
+        self.assertFalse(Note.objects.filter(id=self.note.id).exists())
 
     def test_other_user_cant_delete_note(self):
         url = reverse('notes:delete', args=(self.note.slug,))
@@ -115,3 +115,4 @@ class TestLogicApp(TestCase):
         response = self.reader_client.post(url)
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
         self.assertEqual(Note.objects.count(), note_count)
+        self.assertTrue(Note.objects.filter(id=self.note.id).exists())

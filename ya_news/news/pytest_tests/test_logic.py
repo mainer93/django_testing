@@ -1,9 +1,8 @@
 from http import HTTPStatus
 
 import pytest
-from pytest_django.asserts import assertRedirects, assertFormError
-
 from django.urls import reverse
+from pytest_django.asserts import assertRedirects, assertFormError
 
 from news.forms import BAD_WORDS, WARNING
 from news.models import Comment
@@ -20,14 +19,14 @@ def test_anonymous_user_cant_create_comment(client, news):
     assert expected_count == comments_count
 
 
-def test_user_can_create_comment(auth_client, news, author):
+def test_user_can_create_comment(auth_client, news, author, comment):
     expected_count = Comment.objects.count() + 1
     url = reverse(conftest.NEWS_DETAIL_URL, args=(news.id,))
     response = auth_client.post(url, data={'text': conftest.COMMENT_TEXT})
     assertRedirects(response, f'{url}#comments')
     comments_count = Comment.objects.count()
     assert expected_count == comments_count
-    comment = Comment.objects.first()
+    comment = Comment.objects.get(id=comment.id)
     assert comment.text == conftest.COMMENT_TEXT
     assert comment.news == news
     assert comment.author == author
@@ -50,6 +49,7 @@ def test_author_can_delete_comment(auth_client, comment):
     assert response.status_code == HTTPStatus.FOUND
     comments_count = Comment.objects.count()
     assert expected_count == comments_count
+    assert not Comment.objects.filter(id=comment.id).exists()
 
 
 def test_user_cant_delete_comment_of_another_user(reader_client, comment):
@@ -59,6 +59,7 @@ def test_user_cant_delete_comment_of_another_user(reader_client, comment):
     assert response.status_code == HTTPStatus.NOT_FOUND
     comments_count = Comment.objects.count()
     assert expected_count == comments_count
+    assert Comment.objects.filter(id=comment.id).exists()
 
 
 def test_author_can_edit_comment(auth_client, comment, news, author):
@@ -67,12 +68,12 @@ def test_author_can_edit_comment(auth_client, comment, news, author):
     response = auth_client.post(edit_url,
                                 data={'text': conftest.NEW_COMMENT_TEXT})
     assert response.status_code == HTTPStatus.FOUND
-    comment.refresh_from_db()
+    new_comment = Comment.objects.get(id=comment.id)
     comments_count = Comment.objects.count()
     assert expected_count == comments_count
-    assert comment.text == conftest.NEW_COMMENT_TEXT
-    assert comment.news == news
-    assert comment.author == author
+    assert new_comment.text == conftest.NEW_COMMENT_TEXT
+    assert new_comment.news == news
+    assert new_comment.author == author
 
 
 def test_user_cant_edit_comment_of_another_user(admin_client, comment,
@@ -82,9 +83,9 @@ def test_user_cant_edit_comment_of_another_user(admin_client, comment,
     response = admin_client.post(edit_url,
                                  data={'text': conftest.NEW_COMMENT_TEXT})
     assert response.status_code == HTTPStatus.NOT_FOUND
-    comment.refresh_from_db()
+    new_comment = Comment.objects.get(id=comment.id)
     comments_count = Comment.objects.count()
     assert expected_count == comments_count
-    assert comment.text == conftest.COMMENT_TEXT
-    assert comment.news == news
-    assert comment.author == author
+    assert new_comment.text == conftest.COMMENT_TEXT
+    assert new_comment.news == news
+    assert new_comment.author == author

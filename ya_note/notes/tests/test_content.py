@@ -13,10 +13,14 @@ class TestContent(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.author = User.objects.create(username='Автор')
+        cls.author = User.objects.create(
+            username=test_constants.AUTHOR_USERNAME
+        )
         cls.auth_client = Client()
         cls.auth_client.force_login(cls.author)
-        cls.reader = User.objects.create(username='Читатель')
+        cls.reader = User.objects.create(
+            username=test_constants.READER_USERNAME
+        )
         cls.note = Note.objects.create(
             author=cls.author,
             title=test_constants.TITLE_NOTE,
@@ -47,4 +51,7 @@ class TestContent(TestCase):
                 self.auth_client.force_login(user)
                 response = self.auth_client.get(url)
                 object_list = response.context['object_list']
-                self.assertEqual((self.note in object_list), status)
+                if status:
+                    self.assertIn(self.note, object_list)
+                else:
+                    self.assertNotIn(self.note, object_list)
