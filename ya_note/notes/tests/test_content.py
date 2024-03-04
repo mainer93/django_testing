@@ -41,17 +41,21 @@ class TestContent(TestCase):
                 self.assertIsInstance(response.context['form'], NoteForm)
 
     def test_notes_list_for_different_users(self):
+        def assert_note_in(object_list):
+            self.assertIn(self.note, object_list)
+
+        def assert_note_not_in(object_list):
+            self.assertNotIn(self.note, object_list)
+
         users_statuses = (
-            (self.author, True),
-            (self.reader, False),
+            (self.author, assert_note_in),
+            (self.reader, assert_note_not_in),
         )
-        url = test_constants.NOTES_LIST_URL
-        for user, status in users_statuses:
-            with self.subTest(user=user, status=status):
+
+        for user, assert_function in users_statuses:
+            with self.subTest(user=user):
+                url = test_constants.NOTES_LIST_URL
                 self.auth_client.force_login(user)
                 response = self.auth_client.get(url)
                 object_list = response.context['object_list']
-                if status:
-                    self.assertIn(self.note, object_list)
-                else:
-                    self.assertNotIn(self.note, object_list)
+                assert_function(object_list)

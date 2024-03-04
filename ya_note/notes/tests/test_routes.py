@@ -65,3 +65,23 @@ class TestRoutes(TestCase):
                               expected_status=expected_status):
                 response = client.get(url)
                 self.assertEqual(response.status_code, expected_status)
+
+    def test_redirects(self):
+        tests = (
+            (test_constants.NOTES_LIST_URL,
+             test_constants.NOTES_LIST_URL_REDIRECT),
+            (test_constants.NOTES_SUCCESS_URL,
+             test_constants.NOTES_SUCCESS_URL_REDIRECT),
+            (test_constants.NOTES_ADD_URL,
+             test_constants.NOTES_ADD_URL_REDIRECT),
+            (test_constants.NOTES_DETAIL_URL,
+             test_constants.NOTES_DETAIL_URL_REDIRECT),
+            (test_constants.NOTES_DELETE_URL,
+             test_constants.NOTES_DELETE_URL_REDIRECT),
+            (test_constants.NOTES_EDIT_URL,
+             test_constants.NOTES_EDIT_URL_REDIRECT),
+        )
+        for url, url_redirect in tests:
+            with self.subTest(url=url, user=self.anonymous):
+                response = self.anonymous_client.get(url)
+                self.assertRedirects(response, url_redirect)
