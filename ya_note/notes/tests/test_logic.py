@@ -40,15 +40,18 @@ class TestLogicApp(TestCase):
         }
 
     def test_authenticated_user_can_create_note(self):
+        notes_before = set(Note.objects.all())
         url = test_constants.NOTES_ADD_URL
         note_count = Note.objects.count()
         response = self.auth_client.post(url, data=self.form_data)
         self.assertRedirects(response, reverse('notes:success'))
         self.assertEqual(Note.objects.count(), note_count + 1)
-        new_note = Note.objects.get(id=self.note.id)
-        self.assertEqual(new_note.title, self.note.title)
-        self.assertEqual(new_note.text, self.note.text)
-        self.assertEqual(new_note.slug, self.note.slug)
+        notes_after = (set(Note.objects.all()) - notes_before)
+        self.assertEqual(len(notes_after), 1)
+        new_note = notes_after.pop()
+        self.assertEqual(new_note.title, self.form_data['title'])
+        self.assertEqual(new_note.text, self.form_data['text'])
+        self.assertEqual(new_note.slug, self.form_data['slug'])
         self.assertEqual(new_note.author, self.author)
 
     def test_anonymous_user_cant_create_note(self):
@@ -70,7 +73,6 @@ class TestLogicApp(TestCase):
         expected_slug = slugify(self.form_data['title'])
         new_note = Note.objects.filter(slug=expected_slug).first()
         self.assertIsNotNone(new_note)
-        self.assertEqual(new_note.slug, expected_slug)
 
     def test_not_unique_slug(self):
         url = test_constants.NOTES_ADD_URL
