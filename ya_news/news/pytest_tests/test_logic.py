@@ -21,13 +21,10 @@ def test_anonymous_user_cant_create_comment(client, news):
 
 def test_user_can_create_comment(auth_client, news, comment):
     comments_before = set(Comment.objects.all())
-    expected_count = Comment.objects.count() + 1
     url = reverse(conftest.NEWS_DETAIL_URL, args=(news.id,))
     response = auth_client.post(url, data={'text': conftest.COMMENT_TEXT})
     assertRedirects(response, f'{url}#comments')
     comments_after = (set(Comment.objects.all()) - comments_before)
-    comments_count = Comment.objects.count()
-    assert expected_count == comments_count
     assert len(comments_after) == 1
     new_comment = comments_after.pop()
     assert new_comment.text == conftest.COMMENT_TEXT

@@ -42,10 +42,8 @@ class TestLogicApp(TestCase):
     def test_authenticated_user_can_create_note(self):
         notes_before = set(Note.objects.all())
         url = test_constants.NOTES_ADD_URL
-        note_count = Note.objects.count()
         response = self.auth_client.post(url, data=self.form_data)
         self.assertRedirects(response, reverse('notes:success'))
-        self.assertEqual(Note.objects.count(), note_count + 1)
         notes_after = (set(Note.objects.all()) - notes_before)
         self.assertEqual(len(notes_after), 1)
         new_note = notes_after.pop()
